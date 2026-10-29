@@ -118,8 +118,8 @@ jobs:
       - *checkout
       - name: Set up Bun
         uses: ./.github/actions/setup-bun
-        with:
-          bun-version: 1.4.4
+        # No bun-version input: follows the root package.json packageManager field,
+        # so bumping that single field (automatically via Renovate) adopts new Bun releases.
       - &download-models-catalog
         name: Download models catalog
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0

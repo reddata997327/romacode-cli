@@ -6,7 +6,7 @@ import { render, useTerminalDimensions } from "@opentui/solid"
 import { ROMACODE_VERSION } from "../version"
 import "@romacode/tui/component/spinner-renderable"
 import { SPINNER_FRAMES } from "@romacode/tui/component/spinner"
-import { monogram } from "@romacode/tui/logo"
+import { go } from "@romacode/tui/logo"
 import { setTimeout } from "node:timers/promises"
 import {
   batch,
@@ -187,6 +187,7 @@ const colors = {
   text: RGBA.fromHex("#eeeeee"),
 }
 
+const monogram = go.right.slice(1)
 const sweepBlend = 8
 const textDim = RGBA.fromHex("#4c4c4c")
 const rampSteps = 32

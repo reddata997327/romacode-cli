@@ -18,7 +18,7 @@ Want to take on an issue? Leave a comment and a maintainer may assign it unless 
 
 ## Adding Providers
 
-New providers should rarely require RomaCode changes. Add the provider to [models.dev](https://github.com/reddata997327/models.dev) first.
+New providers should rarely require RomaCode changes. Add the provider to [models.dev](https://github.com/anomalyco/models.dev) first.
 
 ## Development
 

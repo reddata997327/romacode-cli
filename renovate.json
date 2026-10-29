@@ -1,0 +1,30 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits"],
+  "description": "Auto-adopt updated toolchains. The root package.json packageManager field is the single Bun version source: CI installs exactly that version, and Renovate bumps it (plus bun.lock) whenever a new Bun ships. Newer runtimes stay compatible because the pre-push hook accepts a caret range and no runtime code gates on an exact Bun version.",
+  "rangeStrategy": "bump",
+  "packageRules": [
+    {
+      "description": "Auto-adopt new Bun releases: bump packageManager + bun.lock, merge when CI is green",
+      "matchManagers": ["bun"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true,
+      "schedule": ["at any time"]
+    },
+    {
+      "description": "Bun major/canary bumps get a PR but need human review",
+      "matchManagers": ["bun"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Auto-merge GitHub Actions version bumps (minor, patch, digest)",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true,
+      "platformAutomerge": true
+    }
+  ]
+}
