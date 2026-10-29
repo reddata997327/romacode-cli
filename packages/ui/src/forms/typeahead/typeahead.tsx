@@ -1,5 +1,5 @@
 import { createResizeObserver } from "@solid-primitives/resize-observer"
-import { createEffect, createMemo, For, type JSX, on, onCleanup, Show } from "solid-js"
+import { createEffect, createMemo, For, type JSX, onCleanup, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Icon } from "@romacode/ui/icon"
 import { abort } from "@romacode/util/abort"
@@ -12,8 +12,6 @@ export { createTypeahead } from "./controller"
 /** A search field over results from `source` that keeps rows on screen while a query is pending. */
 export function Typeahead<T>(props: {
   source: (query: string, signal: AbortSignal) => Promise<T[]>
-  /** Preloaded opening results, including a failed request that the user can retry. */
-  initial?: { items: T[]; failed?: boolean }
   /** Narrows earlier results while the request for the current query is pending. */
   match: (item: T, query: string) => boolean
   key: (item: T) => string
@@ -29,23 +27,17 @@ export function Typeahead<T>(props: {
 }) {
   const i18n = useI18n()
 
-  const [store, setStore] = createStore<{
-    query: string
-    searched: boolean
-    answered?: string
-    failed?: boolean
-    loading?: boolean
-  }>({ query: "", searched: false, answered: props.initial ? "" : undefined })
+  const [store, setStore] = createStore<{ query: string; answered?: string; failed?: boolean; loading?: boolean }>({
+    query: "",
+  })
 
   const cache = new Map<string, T[]>()
+  let seen: T[] = []
   let request: AbortController | undefined
   let input: HTMLInputElement | undefined
   onCleanup(() => abort(request))
 
   const query = () => store.query.trim()
-  // The parent owns the opening list, so a refresh reaches an open panel without remounting the input.
-  const opening = () => (query() ? undefined : props.initial)
-  const failed = () => (opening() ? opening()?.failed : store.failed)
   const pending = () => store.loading || store.answered !== query()
 
   const search = (query: string) => {
@@ -57,7 +49,9 @@ export function Typeahead<T>(props: {
     props.source(query, current.signal).then(
       (items) => {
         if (current.signal.aborted) return
+        const keys = new Set(items.map(props.key))
         cache.set(query, items)
+        seen = [...items, ...seen.filter((item) => !keys.has(props.key(item)))].slice(0, 500)
         setStore({ answered: query, failed: false, loading: false })
       },
       () => !current.signal.aborted && setStore({ answered: query, failed: true, loading: false }),
@@ -65,35 +59,26 @@ export function Typeahead<T>(props: {
   }
 
   // A cached or empty query answers at once; a typed one waits, and the request it supersedes is aborted.
-  createEffect(
-    on(
-      query,
-      (next) => {
-        if (!next || cache.has(next)) return search(next)
-        abort(request)
-        const timer = setTimeout(() => search(next), props.delay)
-        onCleanup(() => clearTimeout(timer))
-      },
-      { defer: !!props.initial },
-    ),
-  )
+  createEffect(() => {
+    const next = query()
 
-  // Narrow visible rows while pending; broadening waits for a cached or server answer, avoiding speculative rows flashing.
+    if (!next || cache.has(next)) return search(next)
+    abort(request)
+    const timer = setTimeout(() => search(next), props.delay)
+    onCleanup(() => clearTimeout(timer))
+  })
+
+  // While a query is pending: its cached answer, else earlier rows that match it, else the rows on screen, marked stale.
   const results = createMemo<{ items: T[]; stale: boolean }>((previous) => {
     const next = query()
-    const preloaded = opening()
-
-    if (preloaded) return { items: preloaded.failed ? [] : preloaded.items, stale: false }
 
     if (store.answered === next && store.failed) return { items: [], stale: false }
-    const cached = cache.get(next) ?? previous?.items.filter((item) => props.match(item, next)) ?? []
+    const cached = cache.get(next) ?? seen.filter((item) => props.match(item, next))
 
     if (cache.has(next) || cached.length > 0) return { items: cached, stale: false }
 
     return { items: previous?.items ?? [], stale: !!previous?.items.length }
   })
-
-  const animateHeight = () => store.searched && results().items.length > 0
 
   const typeahead = createTypeahead<T>({
     items: () => results().items,
@@ -134,7 +119,7 @@ export function Typeahead<T>(props: {
           autocomplete="off"
           spellcheck={false}
           class="h-8 min-w-0 flex-1 outline-none placeholder:text-v2-text-text-faint"
-          onInput={(event) => setStore({ query: event.currentTarget.value, searched: true })}
+          onInput={(event) => setStore("query", event.currentTarget.value)}
           onKeyDown={typeahead.onKeyDown}
         />
         <Show when={store.query}>
@@ -152,11 +137,8 @@ export function Typeahead<T>(props: {
           </button>
         </Show>
       </div>
-      {/* Initial results and the empty state snap into place; other search resizing animates. */}
-      <div
-        class="overflow-hidden duration-[200ms] ease-[cubic-bezier(0.645,0.045,0.355,1)] motion-reduce:transition-none"
-        classList={{ "transition-[height]": animateHeight(), "transition-none": !animateHeight() }}
-      >
+      {/* Height follows the results on a critically damped spring (0.3 s, bounce 0); the first measurement snaps. */}
+      <div class="overflow-hidden transition-[height] duration-[350ms] ease-[linear(0,0.097,0.282,0.466,0.619,0.736,0.821,0.881,0.921,0.949,0.967,0.979,0.986,0.991,1)] motion-reduce:transition-none">
         <div
           ref={(element) =>
             createResizeObserver(element, (rect) =>
@@ -164,7 +146,11 @@ export function Typeahead<T>(props: {
             )
           }
         >
-          <div id={typeahead.listID} role="listbox" class="max-h-56 overflow-y-auto px-1 pb-1 empty:hidden">
+          <div
+            id={typeahead.listID}
+            role="listbox"
+            class="max-h-56 overflow-y-auto px-1 pb-1 empty:hidden"
+          >
             <For each={results().items}>
               {(item) => (
                 <div
@@ -192,10 +178,10 @@ export function Typeahead<T>(props: {
           {/* Stays mounted while a retry or a newer query is pending, so the list never collapses to nothing. */}
           <Show when={results().items.length === 0}>
             <div
-              class="mx-1 flex h-8 items-center px-2 pb-1 text-v2-text-text-faint"
+              class="mx-1 mb-1 flex h-7 items-center px-2 text-v2-text-text-faint"
               classList={{ invisible: store.answered === undefined }}
             >
-              <Show when={failed()} fallback={props.emptyLabel}>
+              <Show when={store.failed} fallback={props.emptyLabel}>
                 <button
                   type="button"
                   class="-mx-2 flex h-7 flex-1 items-center rounded-sm px-2 text-start text-v2-text-text-base outline-none hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover"
