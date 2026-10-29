@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@romacode/server",
+  "version": "2.2.0",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/reddata997327/romacode-cli.git",
+    "directory": "packages/server"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "build": "bun run script/build.ts",
+    "pack": "bun run script/pack.ts",
+    "test": "bun test --only-failures",
+    "typecheck": "bun check --no-script -b",
+    "typecheck:tsc": "tsc -b",
+    "probe:workerd": "bun run script/workerd-probe.ts"
+  },
+  "dependencies": {
+    "@effect/platform-node": "catalog:",
+    "@effect/platform-node-shared": "catalog:",
+    "@romacode/core": "workspace:*",
+    "@romacode/protocol": "workspace:*",
+    "@romacode/schema": "workspace:*",
+    "@romacode/simulation": "workspace:*",
+    "@romacode/util": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@opencode-ai/pty": "0.3.1",
+    "@romacode/client": "workspace:*",
+    "@romacode/plugin": "workspace:*",
+    "@tsconfig/bun": "catalog:",
+    "@types/bun": "catalog:",
+    "@typescript/native": "catalog:",
+    "fast-check": "catalog:"
+  }
+}
