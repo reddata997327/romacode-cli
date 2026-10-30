@@ -1,0 +1,7 @@
+sst-env.d.ts
+packages/desktop/src/bindings.ts
+packages/client/src/generated/
+packages/client/src/generated-effect/
+packages/plugins/figma/skills/
+# vendored upstream code, do not reformat
+packages/vendor/
