@@ -77,6 +77,20 @@ if [ -n "$binary_path" ]; then
     fi
     specific_version="local"
 else
+    # A source checkout has no published npm release to download; point at the source workflow instead.
+    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+    if [ -f "$script_dir/package.json" ] && [ -d "$script_dir/packages" ]; then
+        echo -e "${ORANGE}This is the RomaCode source repository; the installer only installs published releases.${NC}"
+        echo -e ""
+        echo -e "To run from source:"
+        echo -e "  bun install && bun run start"
+        echo -e ""
+        echo -e "To install a local build:"
+        echo -e "  bun run --cwd packages/cli build --single"
+        echo -e "  ./install --binary packages/cli/dist/cli-*/bin/romacode"
+        exit 0
+    fi
+
     raw_os=$(uname -s)
     os=$(echo "$raw_os" | tr '[:upper:]' '[:lower:]')
     case "$raw_os" in
